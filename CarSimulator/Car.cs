@@ -7,18 +7,18 @@ namespace CarSimulator;
 
 /// <summary>
 /// Enkel bilsimulator. Skickar 4 fält (Speed, RPM, Fuel, Temp) till ThingSpeak.
-/// Svenska kommentarer & utskrifter.
+/// Personlig och tydlig konsol-output för Rabar. Logiken oförändrad.
 /// </summary>
 internal class Car
 {
-    // Rimliga konstanter
+    // Rimliga konstanter (oförändrade)
     private const double MaxFuelConsumptionPerSecond = 0.005;
     private const int IdleRpm = 800;
     private const int MaxRpm = 6000;
     private const int MinSpeed = 0;
     private const int MaxSpeed = 120;
 
-    // Tillstånd
+    // Tillstånd (oförändrat)
     private double _currentSpeed = 0;
     private double _currentRpm = IdleRpm;
     private double _currentFuel = 100.0;
@@ -27,19 +27,22 @@ internal class Car
 
     private readonly Program.ThingSpeakConfig _cfg;
 
+    // För snygg utskrift
+    private bool _printedHeader = false;
+
     public Car(Program.ThingSpeakConfig cfg) => _cfg = cfg;
 
     public async Task StartSimulationAsync()
     {
         if (string.IsNullOrWhiteSpace(_cfg.WriteApiKey))
         {
-            Console.WriteLine("❌ WriteApiKey saknas i appsettings.json.");
+            WriteError("WriteApiKey saknas i appsettings.json.");
             return;
         }
 
-        Console.WriteLine("🚗 Startar biltelemetri (4 fält)...");
-        var start = DateTime.UtcNow;
+        PrintBanner();
 
+        var start = DateTime.UtcNow;
         while ((DateTime.UtcNow - start).TotalMinutes < _cfg.TripDurationMinutes)
         {
             SimulateStep();
@@ -49,8 +52,20 @@ internal class Car
             var fuel = Math.Round(_currentFuel, 2);
             var temp = Math.Round(GenerateEngineTemp(), 2);
 
+            // Skriv tabellhuvud första gången
+            if (!_printedHeader)
+            {
+                Console.WriteLine("┌─────────┬──────────┬──────────┬──────────┬──────────┐");
+                Console.WriteLine("│  TID s  │  HAST.   │   RPM    │  BRÄNSLE │   TEMP   │");
+                Console.WriteLine("│         │ (km/h)   │          │    (%)   │   (°C)   │");
+                Console.WriteLine("├─────────┼──────────┼──────────┼──────────┼──────────┤");
+                _printedHeader = true;
+            }
+
+            var elapsedS = (DateTime.UtcNow - start).TotalSeconds;
+
             Console.WriteLine(
-                $"Hastighet: {speed:F0} km/h | RPM: {rpm:F0} | Bränsle: {fuel:F1}% | Temp: {temp:F0}°C");
+                $"│ {elapsedS,7:F0} │ {speed,8:F0} │ {rpm,8:F0} │ {fuel,8:F1} │ {temp,8:F0} │");
 
             try
             {
@@ -63,18 +78,37 @@ internal class Car
 
                 var resp = await _http.GetAsync(url);
                 if (!resp.IsSuccessStatusCode)
-                    Console.WriteLine($"⚠️ Misslyckades att skicka: HTTP {(int)resp.StatusCode}");
+                    WriteWarn($"Misslyckades att skicka: HTTP {(int)resp.StatusCode}");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"⚠️ Nätverksfel: {ex.Message}");
+                WriteWarn($"Nätverksfel: {ex.Message}");
             }
 
             Thread.Sleep(TimeSpan.FromSeconds(_cfg.UpdateIntervalSeconds));
         }
 
-        Console.WriteLine("🛑 Simulationen stoppad (körtid nådd).");
+        Console.WriteLine("└─────────┴──────────┴──────────┴──────────┴──────────┘");
+        Console.WriteLine();
+        Console.WriteLine("Tack för åkturen, Rabar!  Sändningen är avslutad.");
     }
+
+    // --- UTSKRIFTSHJÄLP ---
+
+    private static void PrintBanner()
+    {
+        Console.WriteLine();
+        Console.WriteLine("╔══════════════════════════════════════════════════════════╗");
+        Console.WriteLine("║              Rabar • Car Telemetry Simulator             ║");
+        Console.WriteLine("╚══════════════════════════════════════════════════════════╝");
+        Console.WriteLine("Startar biltelemetri (4 fält: Speed, RPM, Fuel, Temp) …");
+        Console.WriteLine();
+    }
+
+    private static void WriteWarn(string msg) => Console.WriteLine($"[Varning] {msg}");
+    private static void WriteError(string msg) => Console.WriteLine($"[Fel] {msg}");
+
+    // --- LOGIK (OFÖRÄNDRAD) ---
 
     private void SimulateStep()
     {

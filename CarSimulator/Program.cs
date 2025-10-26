@@ -16,7 +16,7 @@ internal class Program
         var cfgPath = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
         if (!File.Exists(cfgPath))
         {
-            Console.WriteLine("❌ Hittar inte appsettings.json i CarSimulator.");
+            Console.WriteLine("Hittar inte appsettings.json i CarSimulator.");
             return 1;
         }
         var json = await File.ReadAllTextAsync(cfgPath);
@@ -25,7 +25,7 @@ internal class Program
         var sim = new Car(cfg.ThingSpeak);
         await sim.StartSimulationAsync();
 
-        Console.WriteLine("✅ Simulationen är klar.");
+        Console.WriteLine("Simulationen är klar.");
         return 0;
     }
 
